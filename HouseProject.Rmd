@@ -1,0 +1,102 @@
+---
+title: "HouseValue"
+author: "bjpotrat"
+date: "8/1/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load Libraries and data 
+```{r house data}
+library(readxl)
+library(outliers)
+library(NNLM)
+Housedata <- read_excel("Housedata.xlsx")
+
+myhouse.ex<-data.frame(Address = '9484 Expanded', 
+                    Acres=0.79, 
+                    LandValue=169100, 
+                    BuildingValue=217900, 
+                    FinalValue=387000,
+                    Rooms=13,
+                    Beds=4,
+                    Bath50=0,
+                    Bath75=2,
+                    Bath100=1,
+                    Kitchens=2,
+                    Fireplace=2,
+                    AG_Sqft=3.126,
+                    BG_Sqft=0,
+                    TotalSqft=3.126)
+```
+
+## Create Basic Linear Model
+
+```{r Basic mdl.lm}
+mdl.lm <- lm(BuildingValue~Beds+Bath50+Bath75+Bath100+Kitchens+TotalSqft+Fireplace+0, data= Housedata)
+mdl.lm$coefficients
+```
+```{r Plot Lm, echo=FALSE}
+par(mfrow = c(2, 2))
+plot(mdl.lm)
+```
+
+```{r Remove Outliers from data, echo=True}
+cooksd <- cooks.distance(mdl.lm)
+plot(cooksd, pch="*", cex=2, main="Influential Obs by Cooks distance")
+abline(h =mean(cooksd, na.rm=T), col="red")
+text(x=1:length(cooksd)+1, y=cooksd, labels=ifelse(cooksd>mean(cooksd, na.rm=T),names(cooksd),""), col="red")
+influential <- as.numeric(names(cooksd)[(cooksd > mean(cooksd, na.rm=T))])
+```
+
+```{r Remove Outliers from data, echo=FALSE}
+Housedata.Clean<-Housedata[-influential,]
+```
+
+```{r check LM, echo=true}
+mdl.lm2 <- lm(BuildingValue~Beds+Bath50+Bath75+Bath100+Kitchens+TotalSqft+Fireplace+0, data= Housedata.Clean)
+mdl.lm2$coefficients
+sprintf("$%.2f",predict(mdl.lm2,Housedata[1,]))
+```
+```{r Plot Lm, echo=FALSE}
+par(mfrow = c(2, 2))
+plot(mdl.lm2)
+```
+
+## Create a non-negative coefficient linear model
+```{r nnlm, echo=FALSE}
+x<-Housedata.Clean[c("Beds","Bath50","Bath75","Bath100","Kitchens","TotalSqft","Fireplace")]
+y<-Housedata.Clean["BuildingValue"]
+mdl.NNLM <- nnlm(data.matrix(x),y, method = "lee", loss = "mse", alpha = 20)
+round(mdl.NNLM$coefficients,2)
+```
+
+```{r Plot nnlm, echo=TRUE}
+yhat<- data.matrix(x) %*% as.vector(t(mdl.NNLM$coefficients[,1]))
+nnlm.residuals<-t(y-yhat)/1000
+barplot(nnlm.residuals, main = "Residuals from NNLm")
+abline(h=mean(nnlm.residuals), col="blue")
+abline(h=quantile(nnlm.residuals,probs=c(0.05,0.95)), col="red")
+```
+
+```{r Verify my house value, echo=FALSE}
+sprintf("$%.2f",yhat[1])
+```
+
+```{r Estimate value of home improvements, echo=FALSE}
+coef<-mdl.NNLM$coefficients[,1]
+predNNLM.ex <- myhouse.ex["Beds"]*coef["Beds"] + myhouse.ex["Bath50"]*coef["Bath50"] + myhouse.ex["Bath75"]*coef["Bath75"] + myhouse.ex["Bath100"] * coef["Bath100"] + myhouse.ex[1,"Kitchens"] * coef["Kitchens"] + myhouse.ex["TotalSqft"]*coef["TotalSqft"] +
+myhouse.ex["Fireplace"]*coef["Fireplace"]
+sprintf("$%.2f",predNNLM.ex)
+```
+
+```{r Calculate the net affect of the improvement}
+sprintf("$%.2f",predNNLM.ex-yhat[1])
+```
+
+```{r Calculate the final value}
+sprintf("$%.2f",predNNLM.ex+myhouse.ex$LandValue)
+```
