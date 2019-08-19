@@ -22,7 +22,7 @@ Please note that the Load Data and Calculate button will load a test dataset.
 
 When applying an initial linear model the test dataset, some components of the home have negative coeffients which doesnot make a lot of sense.  However, the initial linear does generate a good method of cleaning the data of outliers for alternative model generation.
 
-```{r echo=FALSE}
+```{r echo = TRUE}
 Housedata <-read.csv(url('https://github.com/bjpotrat/DevDataProdsAsn4/raw/master/Housedata.csv'))
 mdl.lm <- lm(BuildingValue~Beds+Bath50+Bath75+Bath100+Kitchens+TotalSqft+Fireplace+0, data= Housedata)
 mdl.lm$coefficients
@@ -37,7 +37,7 @@ influential <- as.numeric(names(cooksd)[(cooksd > mean(cooksd, na.rm=T))])
 
 ## Non-Negative Linear Model (NNLM)
 Using NNLM, the coefficients of a linear model are forced to be possitive.  The square footage of the home had to be scaled by a factor of 1000 to prevent abnormal wieght of it's coefficient.
-```{r echo=FALSE}
+```{r echo = TRUE}
 library(NNLM)
 Housedata.Clean<-Housedata[-influential,]
 x<-Housedata.Clean[c("Beds","Bath50","Bath75","Bath100","Kitchens","TotalSqft","Fireplace")]
@@ -56,22 +56,17 @@ abline(h=c(-100000,-50000,0,50000,100000), col="gray", lty=2)
 ## Using the App 
 User Interaction:
 
-- The user can load or calculate the by "clicking data and calclulate".
-
-- The user can select their home's Id, which can be found on the House Data tab after the data has been loaded and calculated.
-
-- The user can have the app calculate the estimated value of a house by clicking "Estimate Home Improvements".
-
-- The user can download and upload thier own data by using the download Homedata.csv and upload Homedata.csv button.
+ - The user can load or calculate the by "clicking data and calclulate".
+ - The user can select their home's Id, which can be found on the House Data tab after the data has been loaded and calculated.
+ - The user can have the app calculate the estimated value of a house by clicking "Estimate Home Improvements".
+ - The user can download and upload thier own data by using the download Homedata.csv and upload Homedata.csv button.
 
 Output data tabs feature:
 
-- The models estimated values verse the housedata.csv's values.
+ - A plot of the models estimated values verse the housedata.csv's values.
+ - Your current home's value base on "Your home's ID"
+ - Your estimated home's value based on the selected home parameters
+ - The model coefficients generated from NNLM
+ - The loaded House Data 
 
-- Your current home's value base on "Your home's ID"
 
-- Your estimated home's value based on the selected home parameters
-
-- House Data Loaded
-
-- The model coefficients generated from NNLM
