@@ -1,0 +1,77 @@
+---
+title: "Developing Data Products - Assignment 4 Home Value Calculator"
+author: "bjpotrat"
+date: "8/19/2019"
+output: slidy_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Introduction
+
+During the course of owning a home, owners often wonder how much a home remodel or addition will affect the value of their home.
+
+With the "Home Value Calculator" App, users can upload a .csv file with information from Zillow.com, Redfin.com, or the user's county parcel map.
+
+Please note that the Load Data and Calculate button will load a test dataset. 
+
+## Initial Linear Model Applied and Data Cleaning
+
+
+When applying an initial linear model the test dataset, some components of the home have negative coeffients which doesnot make a lot of sense.  However, the initial linear does generate a good method of cleaning the data of outliers for alternative model generation.
+
+```{r echo=FALSE}
+Housedata <-read.csv(url('https://github.com/bjpotrat/DevDataProdsAsn4/raw/master/Housedata.csv'))
+mdl.lm <- lm(BuildingValue~Beds+Bath50+Bath75+Bath100+Kitchens+TotalSqft+Fireplace+0, data= Housedata)
+mdl.lm$coefficients
+```
+```{r echo=FALSE, fig.align='center', out.width = '40%'}
+cooksd <- cooks.distance(mdl.lm)
+plot(cooksd, pch="*", cex=2, main="Influential Obs by Cooks distance")
+abline(h =mean(cooksd, na.rm=T), col="red")
+text(x=1:length(cooksd)+1, y=cooksd, labels=ifelse(cooksd>mean(cooksd, na.rm=T),names(cooksd),""), col="red")
+influential <- as.numeric(names(cooksd)[(cooksd > mean(cooksd, na.rm=T))])
+```
+
+## Non-Negative Linear Model (NNLM)
+Using NNLM, the coefficients of a linear model are forced to be possitive.  The square footage of the home had to be scaled by a factor of 1000 to prevent abnormal wieght of it's coefficient.
+```{r echo=FALSE}
+library(NNLM)
+Housedata.Clean<-Housedata[-influential,]
+x<-Housedata.Clean[c("Beds","Bath50","Bath75","Bath100","Kitchens","TotalSqft","Fireplace")]
+y<-Housedata.Clean["BuildingValue"]
+mdl.NNLM <- nnlm(data.matrix(x),y, method = "lee", loss = "mse", alpha = 20)
+round(mdl.NNLM$coefficients,2)
+```
+
+```{r, echo=FALSE, fig.align='center', out.width = '40%'}
+yhat<- data.matrix(x) %*% as.vector(t(mdl.NNLM$coefficients[,1]))
+nnlm.residuals<-t(y-yhat)
+barplot(nnlm.residuals, main = "Residuals from NNLm")
+abline(h=c(-100000,-50000,0,50000,100000), col="gray", lty=2)
+```
+
+## Using the App 
+User Interaction:
+
+- The user can load or calculate the by "clicking data and calclulate".
+
+- The user can select their home's Id, which can be found on the House Data tab after the data has been loaded and calculated.
+
+- The user can have the app calculate the estimated value of a house by clicking "Estimate Home Improvements".
+
+- The user can download and upload thier own data by using the download Homedata.csv and upload Homedata.csv button.
+
+Output data tabs feature:
+
+- The models estimated values verse the housedata.csv's values.
+
+- Your current home's value base on "Your home's ID"
+
+- Your estimated home's value based on the selected home parameters
+
+- House Data Loaded
+
+- The model coefficients generated from NNLM
